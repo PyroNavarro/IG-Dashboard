@@ -1,0 +1,1000 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>IG Analytics — Dashboard</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #0a0a0a;
+  --surface: #111111;
+  --surface2: #1a1a1a;
+  --border: rgba(255,255,255,0.07);
+  --border-hover: rgba(255,255,255,0.14);
+  --text: #f0f0f0;
+  --muted: #6b6b6b;
+  --muted2: #444;
+  --accent: #e8ff47;
+  --accent-dim: rgba(232,255,71,0.12);
+  --accent-dim2: rgba(232,255,71,0.06);
+  --blue: #60a5fa;
+  --blue-dim: rgba(96,165,250,0.1);
+  --green: #34d399;
+  --green-dim: rgba(52,211,153,0.1);
+  --coral: #f87171;
+  --coral-dim: rgba(248,113,113,0.1);
+  --purple: #a78bfa;
+  --purple-dim: rgba(167,139,250,0.1);
+  --radius: 12px;
+  --radius-sm: 8px;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: 'Inter', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
+h1, h2, h3, .display { font-family: 'Space Grotesk', sans-serif; }
+
+/* Layout */
+.app { display: flex; min-height: 100vh; }
+.sidebar { width: 220px; flex-shrink: 0; background: var(--surface); border-right: 1px solid var(--border); padding: 24px 16px; display: flex; flex-direction: column; gap: 4px; position: sticky; top: 0; height: 100vh; overflow-y: auto; }
+.main { flex: 1; padding: 32px; overflow-x: hidden; }
+
+/* Sidebar */
+.logo { display: flex; align-items: center; gap: 10px; padding: 8px 12px; margin-bottom: 20px; }
+.logo-mark { width: 32px; height: 32px; background: var(--accent); border-radius: 8px; display: flex; align-items: center; justify-content: center; }
+.logo-mark svg { width: 18px; height: 18px; }
+.logo-text { font-family: 'Space Grotesk', sans-serif; font-weight: 700; font-size: 15px; color: var(--text); }
+.nav-section { font-size: 10px; font-weight: 600; letter-spacing: 0.1em; color: var(--muted); padding: 12px 12px 6px; text-transform: uppercase; }
+.nav-item { display: flex; align-items: center; gap: 10px; padding: 9px 12px; border-radius: var(--radius-sm); cursor: pointer; font-size: 14px; color: var(--muted); transition: all 0.15s; border: none; background: none; width: 100%; text-align: left; }
+.nav-item:hover { background: var(--surface2); color: var(--text); }
+.nav-item.active { background: var(--accent-dim); color: var(--accent); }
+.nav-item svg { width: 16px; height: 16px; flex-shrink: 0; }
+.api-section { margin-top: auto; padding-top: 16px; border-top: 1px solid var(--border); }
+.api-label { font-size: 11px; color: var(--muted); margin-bottom: 6px; font-weight: 500; }
+.api-input { width: 100%; background: var(--surface2); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 8px 10px; font-size: 12px; color: var(--text); font-family: monospace; }
+.api-input:focus { outline: none; border-color: var(--accent); }
+.api-status { font-size: 11px; margin-top: 6px; }
+
+/* Tabs / panels */
+.panel { display: none; }
+.panel.active { display: block; }
+
+/* Page header */
+.page-header { margin-bottom: 28px; }
+.page-header h2 { font-size: 22px; font-weight: 700; color: var(--text); }
+.page-header p { font-size: 13px; color: var(--muted); margin-top: 4px; }
+
+/* Metric grid */
+.metric-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; margin-bottom: 24px; }
+.metric-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px; }
+.metric-label { font-size: 11px; color: var(--muted); font-weight: 500; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 8px; }
+.metric-value { font-family: 'Space Grotesk', sans-serif; font-size: 26px; font-weight: 700; color: var(--text); }
+.metric-delta { font-size: 12px; margin-top: 4px; }
+.up { color: var(--green); }
+.down { color: var(--coral); }
+.neutral { color: var(--muted); }
+
+/* Cards */
+.card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 20px; }
+.card-title { font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.07em; color: var(--muted); margin-bottom: 16px; }
+.grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 20px; }
+.grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-bottom: 20px; }
+
+/* Charts */
+.chart-wrap { position: relative; }
+
+/* Bar rows */
+.bar-row { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+.bar-label { font-size: 12px; color: var(--muted); width: 90px; flex-shrink: 0; }
+.bar-track { flex: 1; height: 6px; background: var(--surface2); border-radius: 3px; overflow: hidden; }
+.bar-fill { height: 100%; border-radius: 3px; transition: width 0.8s ease; }
+.bar-val { font-size: 12px; font-weight: 500; width: 36px; text-align: right; }
+
+/* Insights */
+.insight { display: flex; gap: 12px; padding: 14px; background: var(--surface2); border-radius: var(--radius-sm); margin-bottom: 10px; border-left: 2px solid transparent; }
+.insight.accent { border-left-color: var(--accent); }
+.insight.blue { border-left-color: var(--blue); }
+.insight.green { border-left-color: var(--green); }
+.insight.coral { border-left-color: var(--coral); }
+.insight-icon { font-size: 18px; flex-shrink: 0; }
+.insight-body { font-size: 13px; line-height: 1.6; color: var(--text); }
+.insight-body strong { color: var(--accent); font-weight: 600; }
+
+/* Posts table */
+.post-row { display: flex; align-items: center; gap: 12px; padding: 12px 0; border-bottom: 1px solid var(--border); }
+.post-row:last-child { border: none; }
+.post-thumb { width: 42px; height: 42px; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 20px; flex-shrink: 0; }
+.post-info { flex: 1; min-width: 0; }
+.post-title { font-size: 13px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.post-sub { font-size: 11px; color: var(--muted); margin-top: 2px; }
+.post-stats { display: flex; gap: 14px; font-size: 12px; color: var(--muted); flex-shrink: 0; }
+.post-stat-item { display: flex; align-items: center; gap: 4px; }
+
+/* Badge */
+.badge { font-size: 10px; font-weight: 600; padding: 2px 8px; border-radius: 20px; display: inline-block; }
+.badge-accent { background: var(--accent-dim); color: var(--accent); }
+.badge-blue { background: var(--blue-dim); color: var(--blue); }
+.badge-green { background: var(--green-dim); color: var(--green); }
+.badge-coral { background: var(--coral-dim); color: var(--coral); }
+.badge-purple { background: var(--purple-dim); color: var(--purple); }
+
+/* Heatmap */
+.heatmap-table { width: 100%; border-collapse: separate; border-spacing: 3px; }
+.heatmap-table th { font-size: 10px; color: var(--muted); font-weight: 500; text-align: center; padding: 2px; }
+.heatmap-table td { height: 22px; border-radius: 3px; }
+.hm-0 { background: var(--surface2); }
+.hm-1 { background: rgba(232,255,71,0.08); }
+.hm-2 { background: rgba(232,255,71,0.2); }
+.hm-3 { background: rgba(232,255,71,0.38); }
+.hm-4 { background: rgba(232,255,71,0.6); }
+.hm-5 { background: rgba(232,255,71,0.85); }
+
+/* AI Advisor */
+.ai-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 14px; }
+.chip { font-size: 12px; padding: 6px 12px; background: var(--surface2); border: 1px solid var(--border); border-radius: 20px; cursor: pointer; color: var(--muted); transition: all 0.15s; }
+.chip:hover { border-color: var(--accent); color: var(--accent); }
+.ai-input-row { display: flex; gap: 8px; margin-bottom: 14px; }
+.ai-input-row input { flex: 1; background: var(--surface2); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 10px 14px; font-size: 14px; color: var(--text); font-family: 'Inter', sans-serif; }
+.ai-input-row input:focus { outline: none; border-color: var(--accent); }
+.btn-accent { background: var(--accent); color: #000; border: none; border-radius: var(--radius-sm); padding: 10px 18px; font-size: 13px; font-weight: 600; cursor: pointer; font-family: 'Space Grotesk', sans-serif; transition: opacity 0.15s; white-space: nowrap; }
+.btn-accent:hover { opacity: 0.88; }
+.btn-accent:disabled { opacity: 0.4; cursor: not-allowed; }
+.btn-secondary { background: var(--surface2); color: var(--text); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 10px 18px; font-size: 13px; font-weight: 500; cursor: pointer; transition: border-color 0.15s; white-space: nowrap; }
+.btn-secondary:hover { border-color: var(--border-hover); }
+.ai-result { background: var(--surface2); border: 1px solid var(--border); border-radius: var(--radius); padding: 18px; font-size: 14px; line-height: 1.75; color: var(--text); min-height: 100px; white-space: pre-wrap; }
+.ai-result.placeholder { color: var(--muted); font-style: italic; }
+.ai-result.loading::after { content: '▋'; animation: blink 1s infinite; color: var(--accent); }
+@keyframes blink { 0%,100% { opacity:1 } 50% { opacity:0 } }
+
+/* Content Analyzer */
+.upload-zone { border: 2px dashed var(--border-hover); border-radius: var(--radius); padding: 40px; text-align: center; cursor: pointer; transition: all 0.2s; background: var(--surface2); margin-bottom: 20px; }
+.upload-zone:hover, .upload-zone.drag-over { border-color: var(--accent); background: var(--accent-dim2); }
+.upload-zone input { display: none; }
+.upload-icon { font-size: 36px; margin-bottom: 12px; }
+.upload-text { font-size: 14px; color: var(--muted); }
+.upload-text strong { color: var(--text); display: block; margin-bottom: 4px; font-size: 15px; }
+.upload-preview { position: relative; border-radius: var(--radius); overflow: hidden; max-height: 360px; background: var(--surface2); margin-bottom: 20px; display: none; }
+.upload-preview img, .upload-preview video { width: 100%; max-height: 360px; object-fit: contain; display: block; }
+.upload-preview-remove { position: absolute; top: 10px; right: 10px; background: rgba(0,0,0,0.7); border: none; border-radius: 50%; width: 30px; height: 30px; cursor: pointer; color: white; font-size: 16px; display: flex; align-items: center; justify-content: center; }
+.analysis-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px; }
+.analysis-box { background: var(--surface2); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px; }
+.analysis-box-title { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.07em; color: var(--muted); margin-bottom: 10px; }
+.hashtag-list { display: flex; flex-wrap: wrap; gap: 6px; }
+.hashtag { font-size: 12px; background: var(--accent-dim); color: var(--accent); padding: 4px 10px; border-radius: 20px; cursor: pointer; }
+.hashtag:hover { background: rgba(232,255,71,0.22); }
+.caption-text { font-size: 13px; line-height: 1.7; color: var(--text); white-space: pre-wrap; }
+.copy-btn { font-size: 11px; color: var(--muted); background: none; border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 4px 10px; cursor: pointer; margin-top: 8px; transition: all 0.15s; }
+.copy-btn:hover { color: var(--accent); border-color: var(--accent); }
+.score-row { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+.score-label { font-size: 12px; color: var(--muted); width: 100px; flex-shrink: 0; }
+.score-track { flex: 1; height: 6px; background: var(--surface); border-radius: 3px; overflow: hidden; }
+.score-fill { height: 100%; border-radius: 3px; }
+.score-val { font-size: 12px; font-weight: 600; width: 32px; text-align: right; }
+.posting-time { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--text); padding: 10px 14px; background: var(--accent-dim2); border-radius: var(--radius-sm); border: 1px solid rgba(232,255,71,0.15); margin-bottom: 8px; }
+.posting-time .time-icon { font-size: 18px; }
+
+/* Audience tab */
+.country-flag { font-size: 16px; margin-right: 6px; }
+
+/* Brands tab */
+.brands-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; margin-bottom: 20px; }
+.brand-stat { background: var(--surface2); border-radius: var(--radius-sm); padding: 14px; text-align: center; }
+.brand-stat-val { font-family: 'Space Grotesk', sans-serif; font-size: 24px; font-weight: 700; margin-bottom: 4px; }
+.brand-stat-label { font-size: 11px; color: var(--muted); }
+.brand-stat-bench { font-size: 10px; margin-top: 4px; }
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 4px; height: 4px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--muted2); border-radius: 2px; }
+
+/* Mobile responsive */
+@media (max-width: 768px) {
+  .sidebar { display: none; }
+  .main { padding: 16px; }
+  .grid-2, .grid-3, .analysis-grid, .brands-grid { grid-template-columns: 1fr; }
+  .metric-grid { grid-template-columns: repeat(2, 1fr); }
+}
+</style>
+</head>
+<body>
+<div class="app">
+
+<!-- SIDEBAR -->
+<aside class="sidebar">
+  <div class="logo">
+    <div class="logo-mark">
+      <svg viewBox="0 0 24 24" fill="none" stroke="#000" stroke-width="2.5"><rect x="2" y="2" width="20" height="20" rx="5"/><circle cx="12" cy="12" r="4"/><circle cx="17.5" cy="6.5" r="1" fill="#000" stroke="none"/></svg>
+    </div>
+    <span class="logo-text">IG Analytics</span>
+  </div>
+
+  <span class="nav-section">Métricas</span>
+  <button class="nav-item active" onclick="showPanel('overview', this)">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+    Overview
+  </button>
+  <button class="nav-item" onclick="showPanel('audience', this)">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="9" cy="7" r="3"/><circle cx="16" cy="9" r="2.5"/><path d="M3 20c0-3.3 2.7-6 6-6s6 2.7 6 6"/><path d="M19 20c0-2.2-1.3-4-3-5"/></svg>
+    Audiencia
+  </button>
+  <button class="nav-item" onclick="showPanel('content', this)">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/></svg>
+    Contenido
+  </button>
+
+  <span class="nav-section">Herramientas</span>
+  <button class="nav-item" onclick="showPanel('analyzer', this)">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
+    Analizar contenido
+  </button>
+  <button class="nav-item" onclick="showPanel('ai', this)">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m12 3-1.9 5.8a2 2 0 0 1-1.3 1.3L3 12l5.8 1.9a2 2 0 0 1 1.3 1.3L12 21l1.9-5.8a2 2 0 0 1 1.3-1.3L21 12l-5.8-1.9a2 2 0 0 1-1.3-1.3Z"/></svg>
+    IA Advisor
+  </button>
+  <button class="nav-item" onclick="showPanel('brands', this)">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>
+    Para marcas
+  </button>
+
+  <div class="api-section">
+    <div class="api-status" id="apiStatus" style="color:#34d399;font-size:11px">✓ IA conectada</div>
+  </div>
+</aside>
+
+<!-- MAIN CONTENT -->
+<main class="main">
+
+  <!-- OVERVIEW -->
+  <div id="panel-overview" class="panel active">
+    <div class="page-header">
+      <h2>Overview</h2>
+      <p>Últimos 30 días · Actualizado hoy</p>
+    </div>
+
+    <div class="metric-grid">
+      <div class="metric-card">
+        <div class="metric-label">Seguidores</div>
+        <div class="metric-value">24.8K</div>
+        <div class="metric-delta up">↑ +312 este mes</div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-label">Engagement rate</div>
+        <div class="metric-value">4.7%</div>
+        <div class="metric-delta up">↑ +0.4% vs mes ant.</div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-label">Alcance prom.</div>
+        <div class="metric-value">8.2K</div>
+        <div class="metric-delta down">↓ −3% vs mes ant.</div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-label">Impresiones</div>
+        <div class="metric-value">142K</div>
+        <div class="metric-delta up">↑ +11% vs mes ant.</div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-label">Posts publicados</div>
+        <div class="metric-value">18</div>
+        <div class="metric-delta neutral">4 Reels · 8 Carruseles · 6 Fotos</div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-label">Story views prom.</div>
+        <div class="metric-value">3.1K</div>
+        <div class="metric-delta up">↑ por story</div>
+      </div>
+    </div>
+
+    <div class="grid-2">
+      <div class="card">
+        <div class="card-title">Alcance semanal</div>
+        <div class="chart-wrap" style="height:180px">
+          <canvas id="reachChart" role="img" aria-label="Alcance semanal de Instagram en 4 semanas"></canvas>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-title">Mix de contenido</div>
+        <div style="display:flex;align-items:center;gap:16px;height:180px">
+          <div class="chart-wrap" style="height:150px;width:150px;flex-shrink:0">
+            <canvas id="typeChart" role="img" aria-label="Distribución de tipos de contenido"></canvas>
+          </div>
+          <div style="font-size:13px;display:flex;flex-direction:column;gap:10px">
+            <div><span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:#e8ff47;margin-right:8px"></span>Reels <strong>52%</strong></div>
+            <div><span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:#60a5fa;margin-right:8px"></span>Carruseles <strong>31%</strong></div>
+            <div><span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:#444;margin-right:8px"></span>Fotos <strong>17%</strong></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">Mejor horario para publicar — Engagement promedio</div>
+      <div style="overflow-x:auto;margin-top:8px" id="heatmapWrap"></div>
+    </div>
+  </div>
+
+  <!-- AUDIENCE -->
+  <div id="panel-audience" class="panel">
+    <div class="page-header">
+      <h2>Audiencia</h2>
+      <p>Demografía y comportamiento de tus seguidores</p>
+    </div>
+
+    <div class="metric-grid">
+      <div class="metric-card">
+        <div class="metric-label">Seguidores totales</div>
+        <div class="metric-value">24,812</div>
+        <div class="metric-delta up">↑ +1.3% este mes</div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-label">Ganados este mes</div>
+        <div class="metric-value">+312</div>
+        <div class="metric-delta neutral">−28 unfollows</div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-label">No seguidores alcanzados</div>
+        <div class="metric-value">74%</div>
+        <div class="metric-delta up">↑ Alto tráfico Explorar</div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-label">Cuentas alcanzadas</div>
+        <div class="metric-value">61.4K</div>
+        <div class="metric-delta up">↑ +8% vs mes ant.</div>
+      </div>
+    </div>
+
+    <div class="grid-2">
+      <div class="card">
+        <div class="card-title">Género</div>
+        <div class="bar-row"><span class="bar-label">Hombres</span><div class="bar-track"><div class="bar-fill" style="width:62%;background:#60a5fa"></div></div><span class="bar-val">62%</span></div>
+        <div class="bar-row"><span class="bar-label">Mujeres</span><div class="bar-track"><div class="bar-fill" style="width:36%;background:#f472b6"></div></div><span class="bar-val">36%</span></div>
+        <div class="bar-row"><span class="bar-label">Otros</span><div class="bar-track"><div class="bar-fill" style="width:2%;background:#6b6b6b"></div></div><span class="bar-val">2%</span></div>
+        <div class="card-title" style="margin-top:20px">Edad</div>
+        <div class="bar-row"><span class="bar-label">18–24</span><div class="bar-track"><div class="bar-fill" style="width:28%;background:#a78bfa"></div></div><span class="bar-val">28%</span></div>
+        <div class="bar-row"><span class="bar-label">25–34</span><div class="bar-track"><div class="bar-fill" style="width:41%;background:#a78bfa"></div></div><span class="bar-val">41%</span></div>
+        <div class="bar-row"><span class="bar-label">35–44</span><div class="bar-track"><div class="bar-fill" style="width:19%;background:#a78bfa"></div></div><span class="bar-val">19%</span></div>
+        <div class="bar-row"><span class="bar-label">45+</span><div class="bar-track"><div class="bar-fill" style="width:12%;background:#a78bfa"></div></div><span class="bar-val">12%</span></div>
+      </div>
+      <div class="card">
+        <div class="card-title">Top ciudades</div>
+        <div class="bar-row"><span class="bar-label"><span class="country-flag">🇲🇽</span> CDMX</span><div class="bar-track"><div class="bar-fill" style="width:34%;background:#34d399"></div></div><span class="bar-val">34%</span></div>
+        <div class="bar-row"><span class="bar-label"><span class="country-flag">🇲🇽</span> GDL</span><div class="bar-track"><div class="bar-fill" style="width:18%;background:#34d399"></div></div><span class="bar-val">18%</span></div>
+        <div class="bar-row"><span class="bar-label"><span class="country-flag">🇲🇽</span> MTY</span><div class="bar-track"><div class="bar-fill" style="width:14%;background:#34d399"></div></div><span class="bar-val">14%</span></div>
+        <div class="bar-row"><span class="bar-label"><span class="country-flag">🇺🇸</span> LA</span><div class="bar-track"><div class="bar-fill" style="width:8%;background:#34d399"></div></div><span class="bar-val">8%</span></div>
+        <div class="bar-row"><span class="bar-label"><span class="country-flag">🇺🇸</span> Miami</span><div class="bar-track"><div class="bar-fill" style="width:5%;background:#34d399"></div></div><span class="bar-val">5%</span></div>
+        <div class="card-title" style="margin-top:20px">Horario activo</div>
+        <div style="font-size:13px;line-height:2">
+          <div>🔥 Pico principal: <strong>Mar–Vie 7–9 PM CST</strong></div>
+          <div>📈 Pico secundario: <strong>Sáb–Dom 11 AM–1 PM CST</strong></div>
+          <div>💤 Menor actividad: <strong>Lun–Mar antes de 7 AM</strong></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">Crecimiento de seguidores — 12 semanas</div>
+      <div class="chart-wrap" style="height:160px">
+        <canvas id="growthChart" role="img" aria-label="Crecimiento de seguidores semana a semana"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <!-- CONTENT -->
+  <div id="panel-content" class="panel">
+    <div class="page-header">
+      <h2>Contenido</h2>
+      <p>Rendimiento de posts, Reels y Stories</p>
+    </div>
+
+    <div class="metric-grid">
+      <div class="metric-card"><div class="metric-label">Likes totales</div><div class="metric-value">9,420</div><div class="metric-delta up">↑ +18%</div></div>
+      <div class="metric-card"><div class="metric-label">Comentarios</div><div class="metric-value">834</div><div class="metric-delta up">↑ +22%</div></div>
+      <div class="metric-card"><div class="metric-label">Guardados</div><div class="metric-value">2,107</div><div class="metric-delta up">↑ +35%</div></div>
+      <div class="metric-card"><div class="metric-label">Compartidos</div><div class="metric-value">641</div><div class="metric-delta up">↑ +9%</div></div>
+    </div>
+
+    <div class="grid-2">
+      <div class="card">
+        <div class="card-title">Engagement por tipo de contenido</div>
+        <div class="chart-wrap" style="height:200px">
+          <canvas id="engTypeChart" role="img" aria-label="Engagement rate promedio por tipo de contenido"></canvas>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-title">Interacciones desglosadas</div>
+        <div class="chart-wrap" style="height:200px">
+          <canvas id="interactChart" role="img" aria-label="Total de interacciones por tipo"></canvas>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">Top posts del mes</div>
+      <div class="post-row">
+        <div class="post-thumb" style="background:#1a1a2e">🎬</div>
+        <div class="post-info"><div class="post-title">Reel: Tutorial de detallado de llantas</div><div class="post-sub">12 Jun · <span class="badge badge-accent">Reel</span></div></div>
+        <div class="post-stats"><div class="post-stat-item">❤ 1,240</div><div class="post-stat-item">💬 98</div><div class="post-stat-item">🔖 312</div></div>
+      </div>
+      <div class="post-row">
+        <div class="post-thumb" style="background:#0f2027">📸</div>
+        <div class="post-info"><div class="post-title">Antes y después: BMW M4 full detail</div><div class="post-sub">5 Jun · <span class="badge badge-blue">Carrusel</span></div></div>
+        <div class="post-stats"><div class="post-stat-item">❤ 980</div><div class="post-stat-item">💬 74</div><div class="post-stat-item">🔖 280</div></div>
+      </div>
+      <div class="post-row">
+        <div class="post-thumb" style="background:#0d1f12">🏍️</div>
+        <div class="post-info"><div class="post-title">Detallado completo: BMW S1000RR</div><div class="post-sub">1 Jun · <span class="badge badge-green">Reel</span></div></div>
+        <div class="post-stats"><div class="post-stat-item">❤ 872</div><div class="post-stat-item">💬 61</div><div class="post-stat-item">🔖 241</div></div>
+      </div>
+      <div class="post-row">
+        <div class="post-thumb" style="background:#1f0d0d">🚗</div>
+        <div class="post-info"><div class="post-title">Proceso: pulido de pintura en 3 pasos</div><div class="post-sub">28 May · <span class="badge badge-coral">Carrusel</span></div></div>
+        <div class="post-stats"><div class="post-stat-item">❤ 760</div><div class="post-stat-item">💬 55</div><div class="post-stat-item">🔖 198</div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- CONTENT ANALYZER -->
+  <div id="panel-analyzer" class="panel">
+    <div class="page-header">
+      <h2>Analizar contenido</h2>
+      <p>Sube una foto, video o Reel y Claude optimizará todo para máximo desempeño</p>
+    </div>
+
+    <div class="upload-zone" id="uploadZone" onclick="document.getElementById('fileInput').click()" ondrop="handleDrop(event)" ondragover="handleDragOver(event)" ondragleave="handleDragLeave(event)">
+      <input type="file" id="fileInput" accept="image/*,video/*" onchange="handleFile(event)">
+      <div class="upload-icon">📤</div>
+      <div class="upload-text">
+        <strong>Sube tu foto, Reel o video</strong>
+        Arrastra aquí o haz clic · JPG, PNG, MP4, MOV · hasta 20 MB
+      </div>
+    </div>
+
+    <div class="upload-preview" id="uploadPreview">
+      <img id="previewImg" src="" alt="Preview" style="display:none">
+      <video id="previewVid" controls style="display:none"></video>
+      <button class="upload-preview-remove" onclick="removeFile()" title="Quitar archivo">✕</button>
+    </div>
+
+    <div style="margin-bottom:16px">
+      <label style="font-size:12px;color:var(--muted);font-weight:500;display:block;margin-bottom:6px">Contexto adicional (opcional)</label>
+      <input type="text" id="analyzerContext" placeholder="Ej: Es un video de antes/después de un BMW M3, quiero que se vea profesional pero accesible..." style="width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius-sm);padding:10px 14px;font-size:14px;color:var(--text);font-family:'Inter',sans-serif">
+    </div>
+
+    <div style="display:flex;gap:8px;margin-bottom:24px">
+      <button class="btn-accent" id="analyzeBtn" onclick="analyzeContent()" disabled>✦ Analizar con IA</button>
+      <select id="analyzerFormat" style="background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius-sm);padding:10px 14px;font-size:13px;color:var(--text);font-family:'Inter',sans-serif">
+        <option value="reel">Reel</option>
+        <option value="post">Post / Foto</option>
+        <option value="carrusel">Carrusel</option>
+        <option value="story">Story</option>
+      </select>
+    </div>
+
+    <div id="analyzerResults" style="display:none">
+      <div class="analysis-grid">
+        <div class="analysis-box" style="grid-column:span 2">
+          <div class="analysis-box-title">📊 Puntuación de potencial viral</div>
+          <div id="scoreRows"></div>
+        </div>
+      </div>
+
+      <div class="analysis-grid">
+        <div class="analysis-box">
+          <div class="analysis-box-title">⏰ Mejor momento para publicar</div>
+          <div id="postingTimes"></div>
+        </div>
+        <div class="analysis-box">
+          <div class="analysis-box-title">🎯 Estrategia de publicación</div>
+          <div id="strategyText" style="font-size:13px;line-height:1.7;color:var(--text)"></div>
+        </div>
+      </div>
+
+      <div class="analysis-grid">
+        <div class="analysis-box" style="grid-column:span 2">
+          <div class="analysis-box-title">✍️ Captions sugeridos</div>
+          <div id="captionOptions"></div>
+        </div>
+      </div>
+
+      <div class="analysis-box" style="margin-bottom:16px">
+        <div class="analysis-box-title">🏷️ Hashtags optimizados</div>
+        <div class="hashtag-list" id="hashtagList"></div>
+        <button class="copy-btn" onclick="copyHashtags()">Copiar todos</button>
+      </div>
+
+      <div class="analysis-box">
+        <div class="analysis-box-title">💡 Recomendaciones de mejora</div>
+        <div id="recommendationsList" style="font-size:13px;line-height:1.8;color:var(--text)"></div>
+      </div>
+    </div>
+
+    <div id="analyzerPlaceholder" style="text-align:center;padding:40px;color:var(--muted);font-size:14px">
+      Sube un archivo y presiona "Analizar con IA" para comenzar
+    </div>
+  </div>
+
+  <!-- AI ADVISOR -->
+  <div id="panel-ai" class="panel">
+    <div class="page-header">
+      <h2>IA Advisor</h2>
+      <p>Análisis de tendencias y recomendaciones estratégicas powered by Claude</p>
+    </div>
+
+    <div class="card" style="margin-bottom:20px">
+      <div class="card-title">Preguntas rápidas</div>
+      <div class="ai-chips">
+        <button class="chip" onclick="setAIQ('¿Qué tendencias de contenido de detallado están creciendo en Instagram ahora mismo?')">🔥 Tendencias actuales</button>
+        <button class="chip" onclick="setAIQ('¿Qué tipo de Reels funcionan mejor para cuentas de detallado de autos y motos de lujo?')">🎬 Qué Reel crear</button>
+        <button class="chip" onclick="setAIQ('Analiza mi engagement del 4.7% y dame un plan concreto para llegar al 6% en 30 días')">📈 Subir engagement</button>
+        <button class="chip" onclick="setAIQ('Dame un plan de contenido para los próximos 7 días considerando que mi audiencia es 62% hombres 25-34 en México')">📅 Plan semanal</button>
+        <button class="chip" onclick="setAIQ('¿Cómo monetizo mejor mi cuenta con 24.8K seguidores en el nicho de detallado y motos de lujo?')">💰 Monetización</button>
+        <button class="chip" onclick="setAIQ('¿Cómo estructuro un pitch deck para marcas de productos de detallado que quieran colaborar conmigo?')">🤝 Pitch a marcas</button>
+        <button class="chip" onclick="setAIQ('¿Qué está haciendo bien la competencia en cuentas similares de detallado en México y LATAM?')">🔍 Analizar competencia</button>
+      </div>
+    </div>
+
+    <div class="ai-input-row">
+      <input type="text" id="aiQuestion" placeholder="Pregunta lo que necesites sobre tu estrategia de Instagram..." onkeydown="if(event.key==='Enter')askAI()">
+      <button class="btn-accent" id="aiBtn" onclick="askAI()">✦ Preguntar</button>
+    </div>
+
+    <div id="aiResult" class="ai-result placeholder">Selecciona una pregunta rápida o escribe la tuya para comenzar.</div>
+
+    <div class="card" style="margin-top:20px">
+      <div class="card-title">Insights automáticos del mes</div>
+      <div class="insight accent">
+        <span class="insight-icon">📈</span>
+        <div class="insight-body"><strong>Los Reels generan 2.8× más alcance</strong> que tus fotos estáticas. El algoritmo te está favoreciendo — publicar 3+ Reels/semana podría llevarte a 2,000+ seguidores/mes.</div>
+      </div>
+      <div class="insight green">
+        <span class="insight-icon">🔖</span>
+        <div class="insight-body"><strong>Tu tasa de guardados (8.5%) es excepcional.</strong> Indica contenido educativo de alto valor. El algoritmo de Explorar premia esto — más carruseles paso a paso.</div>
+      </div>
+      <div class="insight coral">
+        <span class="insight-icon">🕐</span>
+        <div class="insight-body"><strong>Estás publicando fuera del horario pico.</strong> Tu audiencia está activa Mar–Vie 7–9 PM. Reprogramar tus últimos posts podría haber generado +18% más engagement.</div>
+      </div>
+      <div class="insight blue">
+        <span class="insight-icon">🎯</span>
+        <div class="insight-body"><strong>74% de tu alcance llega a no-seguidores.</strong> Alta exposición en Explorar. Agrega CTA claro en tus Reels para convertir ese tráfico en seguidores.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- BRANDS -->
+  <div id="panel-brands" class="panel">
+    <div class="page-header">
+      <h2>Media kit para marcas</h2>
+      <p>Resumen ejecutivo listo para compartir con colaboradores potenciales</p>
+    </div>
+
+    <div class="card" style="border:1px solid rgba(232,255,71,0.2);margin-bottom:20px">
+      <div style="display:flex;align-items:center;gap:14px;margin-bottom:20px">
+        <div style="width:52px;height:52px;border-radius:50%;background:var(--accent-dim);display:flex;align-items:center;justify-content:center;font-size:22px">🏍️</div>
+        <div>
+          <div style="font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:18px">@tucuenta</div>
+          <div style="font-size:13px;color:var(--muted)">Detallado · Autos · Motos de lujo · Ciudad de México</div>
+        </div>
+        <button class="btn-accent" style="margin-left:auto" onclick="window.print()">↓ Descargar PDF</button>
+      </div>
+
+      <div class="brands-grid">
+        <div class="brand-stat">
+          <div class="brand-stat-val" style="color:var(--accent)">24.8K</div>
+          <div class="brand-stat-label">Seguidores</div>
+          <div class="brand-stat-bench up">↑ Creciendo +1.3%/mes</div>
+        </div>
+        <div class="brand-stat">
+          <div class="brand-stat-val" style="color:var(--green)">4.7%</div>
+          <div class="brand-stat-label">Engagement rate</div>
+          <div class="brand-stat-bench up">↑ 2× benchmark del sector (2.2%)</div>
+        </div>
+        <div class="brand-stat">
+          <div class="brand-stat-val" style="color:var(--blue)">8.2K</div>
+          <div class="brand-stat-label">Alcance promedio</div>
+          <div class="brand-stat-bench neutral">Por publicación</div>
+        </div>
+        <div class="brand-stat">
+          <div class="brand-stat-val" style="color:var(--purple)">8.5%</div>
+          <div class="brand-stat-label">Tasa de guardados</div>
+          <div class="brand-stat-bench up">↑ Sector avg: 3.1%</div>
+        </div>
+        <div class="brand-stat">
+          <div class="brand-stat-val" style="color:var(--coral)">92/100</div>
+          <div class="brand-stat-label">Score autenticidad</div>
+          <div class="brand-stat-bench up">Audiencia orgánica verificada</div>
+        </div>
+        <div class="brand-stat">
+          <div class="brand-stat-val" style="color:var(--accent)">$0.08</div>
+          <div class="brand-stat-label">CPE estimado (USD)</div>
+          <div class="brand-stat-bench neutral">Costo por engagement</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="grid-2">
+      <div class="card">
+        <div class="card-title">Perfil de audiencia</div>
+        <div style="font-size:13px;line-height:2.1">
+          <div>🎯 <strong>Nicho:</strong> Autodetallado, motos premium, lifestyle automotriz</div>
+          <div>👤 <strong>Demo principal:</strong> Hombres 25–34 (41%)</div>
+          <div>📍 <strong>Geo top:</strong> CDMX · GDL · MTY + diaspora MX en EE.UU.</div>
+          <div>💳 <strong>Poder adquisitivo:</strong> Medio-alto</div>
+          <div>⏰ <strong>Pico activo:</strong> Mar–Vie 7–9 PM CST</div>
+          <div>📱 <strong>Dispositivo:</strong> 94% mobile</div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-title">Formatos de colaboración</div>
+        <div style="font-size:13px;line-height:2.1">
+          <div>🎬 <strong>Reel integrado</strong> — hasta 60 seg, CTA incluido</div>
+          <div>📸 <strong>Carrusel educativo</strong> — 8–10 slides</div>
+          <div>📖 <strong>Story pack</strong> — 3–5 stories con link</div>
+          <div>🔍 <strong>Review de producto</strong> — detallado real</div>
+          <div>📦 <strong>Unboxing</strong> — productos de detallado/cuidado</div>
+          <div>🤝 <strong>Embajador mensual</strong> — acuerdo recurrente</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</main>
+</div>
+
+<script>
+// ─── State ───────────────────────────────────────────────────────
+let uploadedFile = null;
+let uploadedB64 = null;
+let uploadedMime = null;
+
+// ─── Auth ─────────────────────────────────────────────────────────
+let SESSION_PWD = sessionStorage.getItem('ig_pwd') || '';
+
+function getKey() { return null; }
+
+function callClaude(body) {
+  return fetch('/api/claude', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ ...body, password: SESSION_PWD })
+  });
+}
+
+// ─── Navigation ──────────────────────────────────────────────────
+function showPanel(name, btn) {
+  document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(b => b.classList.remove('active'));
+  document.getElementById('panel-' + name).classList.add('active');
+  if (btn) btn.classList.add('active');
+}
+
+// ─── Charts ──────────────────────────────────────────────────────
+function initCharts() {
+  const gridColor = 'rgba(255,255,255,0.05)';
+  const tickColor = '#6b6b6b';
+  const baseOpts = { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { x: { grid: { color: gridColor }, ticks: { color: tickColor, font: { size: 11 } } }, y: { grid: { color: gridColor }, ticks: { color: tickColor, font: { size: 11 } } } } };
+
+  new Chart(document.getElementById('reachChart'), {
+    type: 'line',
+    data: { labels: ['S1','S2','S3','S4'], datasets: [
+      { label: 'Alcance', data: [7400,8100,7800,8200], borderColor: '#e8ff47', backgroundColor: 'rgba(232,255,71,0.06)', tension: 0.4, fill: true, pointRadius: 4, pointBackgroundColor: '#e8ff47' },
+      { label: 'Engagement', data: [310,380,360,420], borderColor: '#34d399', backgroundColor: 'rgba(52,211,153,0.06)', tension: 0.4, fill: true, pointRadius: 4, pointBackgroundColor: '#34d399' }
+    ]},
+    options: baseOpts
+  });
+
+  new Chart(document.getElementById('typeChart'), {
+    type: 'doughnut',
+    data: { labels: ['Reels','Carruseles','Fotos'], datasets: [{ data: [52,31,17], backgroundColor: ['#e8ff47','#60a5fa','#333'], borderWidth: 0 }] },
+    options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, cutout: '68%' }
+  });
+
+  new Chart(document.getElementById('growthChart'), {
+    type: 'line',
+    data: { labels: ['S1','S2','S3','S4','S5','S6','S7','S8','S9','S10','S11','S12'],
+      datasets: [{ data: [23100,23280,23410,23550,23700,23810,23920,24050,24200,24400,24600,24812], borderColor: '#a78bfa', backgroundColor: 'rgba(167,139,250,0.07)', tension: 0.4, fill: true, pointRadius: 2 }]
+    },
+    options: baseOpts
+  });
+
+  new Chart(document.getElementById('engTypeChart'), {
+    type: 'bar',
+    data: { labels: ['Reel','Carrusel','Foto'], datasets: [{ data: [6.2,4.8,2.9], backgroundColor: ['#e8ff47','#60a5fa','#444'], borderRadius: 6 }] },
+    options: { ...baseOpts, scales: { x: { grid: { display: false }, ticks: { color: tickColor, font: { size: 12 } } }, y: { grid: { color: gridColor }, ticks: { color: tickColor, font: { size: 11 }, callback: v => v + '%' } } } }
+  });
+
+  new Chart(document.getElementById('interactChart'), {
+    type: 'bar',
+    data: { labels: ['Likes','Comentarios','Guardados','Shares'], datasets: [{ data: [9420,834,2107,641], backgroundColor: ['#60a5fa','#34d399','#a78bfa','#f472b6'], borderRadius: 6 }] },
+    options: { ...baseOpts, scales: { x: { grid: { display: false }, ticks: { color: tickColor, font: { size: 11 } } }, y: { grid: { color: gridColor }, ticks: { color: tickColor, font: { size: 11 } } } } }
+  });
+}
+
+// ─── Heatmap ─────────────────────────────────────────────────────
+function buildHeatmap() {
+  const days = ['Lun','Mar','Mié','Jue','Vie','Sáb','Dom'];
+  const hours = ['6a','9a','12p','3p','6p','9p','12a'];
+  const data = [[1,1,2,2,3,4,2],[2,2,3,3,4,5,3],[1,2,3,3,4,5,3],[2,2,3,4,5,5,3],[2,2,3,3,4,4,2],[2,3,5,4,3,3,2],[1,2,5,4,3,3,1]];
+  let h = '<table class="heatmap-table"><tr><th></th>';
+  days.forEach(d => h += `<th>${d}</th>`);
+  h += '</tr>';
+  hours.forEach((hr, hi) => {
+    h += `<tr><td style="font-size:10px;color:#6b6b6b;padding:0 6px;white-space:nowrap">${hr}</td>`;
+    days.forEach((d, di) => h += `<td class="hm-${data[di][hi]}"></td>`);
+    h += '</tr>';
+  });
+  h += '</table>';
+  document.getElementById('heatmapWrap').innerHTML = h;
+}
+
+// ─── File upload ─────────────────────────────────────────────────
+function handleDragOver(e) { e.preventDefault(); document.getElementById('uploadZone').classList.add('drag-over'); }
+function handleDragLeave(e) { document.getElementById('uploadZone').classList.remove('drag-over'); }
+function handleDrop(e) {
+  e.preventDefault();
+  document.getElementById('uploadZone').classList.remove('drag-over');
+  const file = e.dataTransfer.files[0];
+  if (file) processFile(file);
+}
+function handleFile(e) {
+  const file = e.target.files[0];
+  if (file) processFile(file);
+}
+function processFile(file) {
+  uploadedFile = file;
+  uploadedMime = file.type;
+  const preview = document.getElementById('uploadPreview');
+  const img = document.getElementById('previewImg');
+  const vid = document.getElementById('previewVid');
+  preview.style.display = 'block';
+  document.getElementById('uploadZone').style.display = 'none';
+
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    const dataUrl = e.target.result;
+    uploadedB64 = dataUrl.split(',')[1];
+    if (file.type.startsWith('image/')) {
+      img.src = dataUrl; img.style.display = 'block'; vid.style.display = 'none';
+    } else {
+      vid.src = dataUrl; vid.style.display = 'block'; img.style.display = 'none';
+    }
+  };
+  reader.readAsDataURL(file);
+  document.getElementById('analyzeBtn').disabled = false;
+}
+function removeFile() {
+  uploadedFile = null; uploadedB64 = null; uploadedMime = null;
+  document.getElementById('uploadPreview').style.display = 'none';
+  document.getElementById('uploadZone').style.display = 'block';
+  document.getElementById('analyzeBtn').disabled = true;
+  document.getElementById('analyzerResults').style.display = 'none';
+  document.getElementById('analyzerPlaceholder').style.display = 'block';
+  document.getElementById('fileInput').value = '';
+}
+function copyHashtags() {
+  const tags = Array.from(document.querySelectorAll('.hashtag')).map(t => t.textContent).join(' ');
+  navigator.clipboard.writeText(tags).then(() => alert('Hashtags copiados ✓'));
+}
+function copyCaption(id) {
+  const text = document.getElementById(id).textContent;
+  navigator.clipboard.writeText(text).then(() => alert('Caption copiado ✓'));
+}
+
+// ─── Analyze content ─────────────────────────────────────────────
+async function analyzeContent() {
+  if (!uploadedFile) { alert('Sube un archivo primero.'); return; }
+
+  const btn = document.getElementById('analyzeBtn');
+  btn.disabled = true; btn.textContent = '⏳ Analizando...';
+  document.getElementById('analyzerResults').style.display = 'none';
+  document.getElementById('analyzerPlaceholder').style.display = 'none';
+
+  const format = document.getElementById('analyzerFormat').value;
+  const context = document.getElementById('analyzerContext').value;
+  const isVideo = uploadedMime.startsWith('video/');
+
+  const systemPrompt = `Eres un experto en estrategia de contenido para Instagram especializado en el nicho de autodetallado, autos de lujo y motocicletas de alto rendimiento en México y LATAM. 
+
+Contexto del perfil del creador:
+- Nicho: Detallado profesional de autos y motos (washing, polishing, PPF, ceramic coating, paint correction)
+- Seguidores: 24,812 — audiencia: 62% hombres, principal 25-34 años
+- Ciudades top: CDMX, Guadalajara, Monterrey + diaspora mexicana en EE.UU.
+- Engagement rate: 4.7% (el doble del benchmark del sector)
+- El contenido que más funciona: Reels educativos, antes/después, proceso detallado
+
+Tu trabajo es analizar el contenido que te comparten y generar un análisis estratégico completo en formato JSON estricto.`;
+
+  const userMsg = `Analiza este ${isVideo ? 'video' : 'imagen'} que voy a publicar como ${format} en Instagram.
+${context ? `Contexto adicional: ${context}` : ''}
+
+Responde ÚNICAMENTE con este JSON (sin texto extra, sin backticks, sin explicaciones):
+{
+  "scores": {
+    "potencial_viral": 85,
+    "calidad_visual": 80,
+    "relevancia_nicho": 90,
+    "hook_strength": 75,
+    "engagement_esperado": 80
+  },
+  "best_times": ["Martes 8 PM CST", "Jueves 7 PM CST"],
+  "strategy": "Descripción breve de la estrategia de publicación (2-3 oraciones)",
+  "captions": [
+    {
+      "tone": "Educativo",
+      "text": "Caption opción 1 (con emojis, hooks, CTA)"
+    },
+    {
+      "tone": "Emocional/Aspiracional",
+      "text": "Caption opción 2 diferente estilo"
+    },
+    {
+      "tone": "Directo/Impactante",
+      "text": "Caption opción 3 más corto y poderoso"
+    }
+  ],
+  "hashtags": ["#detallado", "#autodetallado", "#ceramiccoating", "#cardetailing", "#detailingmexico", "#paintcorrection", "#bmwmexico", "#luxurycars", "#motosmexico", "#autocare", "#carcare", "#detailinglife", "#shine", "#ppf", "#waxing", "#motorenthusiast", "#bmws1000rr", "#detalladores", "#cleancar", "#autosmx"],
+  "recommendations": [
+    "Recomendación 1 específica y accionable",
+    "Recomendación 2 específica y accionable",
+    "Recomendación 3 específica y accionable"
+  ]
+}`;
+
+  const messages = [{
+    role: 'user',
+    content: isVideo
+      ? [{ type: 'text', text: userMsg + '\n\nNota: Este es un video. Analízalo basándote en el contexto del nicho y el formato elegido.' }]
+      : [
+          { type: 'image', source: { type: 'base64', media_type: uploadedMime, data: uploadedB64 } },
+          { type: 'text', text: userMsg }
+        ]
+  }];
+
+  try {
+    const res = await callClaude({ model: 'claude-sonnet-4-6', max_tokens: 2000, system: systemPrompt, messages });
+    if (!res.ok) {
+      const err = await res.json();
+      if (res.status === 401) { showLogin('Contraseña incorrecta'); return; }
+      throw new Error(err.error?.message || 'Error de API');
+    }
+    const data = await res.json();
+    const rawText = data.content.find(b => b.type === 'text')?.text || '{}';
+    let analysis;
+    try { analysis = JSON.parse(rawText.replace(/```json|```/g, '').trim()); }
+    catch { throw new Error('La IA devolvió un formato inesperado. Intenta de nuevo.'); }
+
+    renderAnalysis(analysis);
+  } catch (e) {
+    alert('Error: ' + e.message);
+    document.getElementById('analyzerPlaceholder').style.display = 'block';
+    document.getElementById('analyzerPlaceholder').textContent = 'Error: ' + e.message;
+  } finally {
+    btn.disabled = false; btn.textContent = '✦ Analizar con IA';
+  }
+}
+
+function renderAnalysis(a) {
+  document.getElementById('analyzerPlaceholder').style.display = 'none';
+  document.getElementById('analyzerResults').style.display = 'block';
+
+  // Scores
+  const scoreColors = { potencial_viral: '#e8ff47', calidad_visual: '#60a5fa', relevancia_nicho: '#34d399', hook_strength: '#a78bfa', engagement_esperado: '#f472b6' };
+  const scoreLabels = { potencial_viral: 'Potencial viral', calidad_visual: 'Calidad visual', relevancia_nicho: 'Relevancia nicho', hook_strength: 'Fuerza del hook', engagement_esperado: 'Eng. esperado' };
+  let scoresHtml = '';
+  for (const [k, v] of Object.entries(a.scores || {})) {
+    scoresHtml += `<div class="score-row"><span class="score-label">${scoreLabels[k] || k}</span><div class="score-track"><div class="score-fill" style="width:${v}%;background:${scoreColors[k]||'#e8ff47'}"></div></div><span class="score-val" style="color:${scoreColors[k]||'#e8ff47'}">${v}</span></div>`;
+  }
+  document.getElementById('scoreRows').innerHTML = scoresHtml;
+
+  // Posting times
+  const times = (a.best_times || []).map(t => `<div class="posting-time"><span class="time-icon">⏰</span>${t}</div>`).join('');
+  document.getElementById('postingTimes').innerHTML = times || '<p style="font-size:13px;color:var(--muted)">No disponible</p>';
+
+  // Strategy
+  document.getElementById('strategyText').textContent = a.strategy || '';
+
+  // Captions
+  const toneColors = { 'Educativo': 'badge-blue', 'Emocional/Aspiracional': 'badge-purple', 'Directo/Impactante': 'badge-accent' };
+  let captionsHtml = '';
+  (a.captions || []).forEach((cap, i) => {
+    const id = 'cap' + i;
+    captionsHtml += `<div style="margin-bottom:16px;padding-bottom:16px;border-bottom:1px solid var(--border)"><div style="margin-bottom:8px"><span class="badge ${toneColors[cap.tone] || 'badge-green'}">${cap.tone}</span></div><div class="caption-text" id="${id}">${cap.text}</div><button class="copy-btn" onclick="copyCaption('${id}')">Copiar caption</button></div>`;
+  });
+  document.getElementById('captionOptions').innerHTML = captionsHtml;
+
+  // Hashtags
+  document.getElementById('hashtagList').innerHTML = (a.hashtags || []).map(h => `<span class="hashtag">${h.startsWith('#') ? h : '#' + h}</span>`).join('');
+
+  // Recommendations
+  document.getElementById('recommendationsList').innerHTML = (a.recommendations || []).map((r, i) => `<div style="margin-bottom:10px"><span style="color:var(--accent);font-weight:600">${i + 1}.</span> ${r}</div>`).join('');
+}
+
+// ─── AI Advisor ──────────────────────────────────────────────────
+function setAIQ(q) { document.getElementById('aiQuestion').value = q; askAI(); }
+
+async function askAI() {
+  const q = document.getElementById('aiQuestion').value.trim();
+  if (!q) return;
+
+  const el = document.getElementById('aiResult');
+  const btn = document.getElementById('aiBtn');
+  el.className = 'ai-result loading'; el.textContent = 'Analizando';
+  btn.disabled = true;
+
+  const system = `Eres un experto en estrategia de Instagram y marketing digital para creadores de contenido en el nicho de autodetallado, autos de lujo y motocicletas de alto rendimiento en México y LATAM.
+
+Contexto del perfil:
+- Nicho: Detallado profesional de autos y motos (washing, polishing, PPF, ceramic coating)
+- Seguidores: 24,812 — creciendo +1.3%/mes
+- Engagement rate: 4.7% (benchmark sector: 2.2%)
+- Audiencia: 62% hombres, principal segmento 25-34, top ciudades CDMX/GDL/MTY
+- Tasa de guardados: 8.5% (sector avg: 3.1%)
+- Mejor formato: Reels (eng 6.2%), Carruseles (4.8%), Fotos (2.9%)
+- Mejor horario: Mar-Vie 7-9 PM CST
+- 74% del alcance llega a no-seguidores
+
+Responde en español, de forma directa, práctica y accionable. Usa bullet points cuando sea útil. Máximo 300 palabras.`;
+
+  try {
+    const res = await callClaude({ model: 'claude-sonnet-4-6', max_tokens: 800, system, messages: [{ role: 'user', content: q }] });
+    const data = await res.json();
+    if (!res.ok) {
+      if (res.status === 401) { showLogin('Contraseña incorrecta'); return; }
+      throw new Error(data.error?.message || 'Error de API');
+    }
+    el.className = 'ai-result';
+    el.textContent = data.content?.find(b => b.type === 'text')?.text || 'Sin respuesta.';
+  } catch (e) {
+    el.className = 'ai-result'; el.textContent = 'Error: ' + e.message;
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+// ─── Init ─────────────────────────────────────────────────────────
+window.addEventListener('DOMContentLoaded', () => {
+  initCharts();
+  buildHeatmap();
+});
+</script>
+
+<div id="loginOverlay" style="display:none;position:fixed;inset:0;background:#0a0a0a;z-index:9999;display:flex;align-items:center;justify-content:center">
+  <div style="background:#111;border:1px solid rgba(255,255,255,0.1);border-radius:16px;padding:40px;width:340px;text-align:center">
+    <div style="width:48px;height:48px;background:#e8ff47;border-radius:12px;display:flex;align-items:center;justify-content:center;margin:0 auto 20px;font-size:22px">📊</div>
+    <div style="font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:20px;margin-bottom:6px">IG Analytics</div>
+    <div style="font-size:13px;color:#6b6b6b;margin-bottom:24px">Ingresa la contraseña para continuar</div>
+    <input type="password" id="pwdInput" placeholder="Contraseña" onkeydown="if(event.key==='Enter')submitLogin()"
+      style="width:100%;background:#1a1a1a;border:1px solid rgba(255,255,255,0.1);border-radius:8px;padding:12px 14px;font-size:14px;color:#f0f0f0;margin-bottom:10px;font-family:'Inter',sans-serif">
+    <div id="pwdError" style="font-size:12px;color:#f87171;min-height:18px;margin-bottom:10px"></div>
+    <button onclick="submitLogin()" style="width:100%;background:#e8ff47;color:#000;border:none;border-radius:8px;padding:12px;font-size:14px;font-weight:600;cursor:pointer;font-family:'Space Grotesk',sans-serif">Entrar</button>
+  </div>
+</div>
+
+<script>
+function showLogin(err) {
+  document.getElementById('loginOverlay').style.display = 'flex';
+  if (err) document.getElementById('pwdError').textContent = err;
+  document.getElementById('pwdInput').focus();
+}
+async function submitLogin() {
+  const pwd = document.getElementById('pwdInput').value;
+  if (!pwd) return;
+  SESSION_PWD = pwd;
+  const res = await fetch('/api/claude', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ password: pwd, model: 'claude-sonnet-4-6', max_tokens: 1, messages: [{ role: 'user', content: 'ping' }] })
+  });
+  if (res.status === 401) {
+    document.getElementById('pwdError').textContent = 'Contraseña incorrecta';
+    SESSION_PWD = '';
+  } else {
+    sessionStorage.setItem('ig_pwd', pwd);
+    document.getElementById('loginOverlay').style.display = 'none';
+  }
+}
+if (!SESSION_PWD) showLogin();
+</script>
+</body>
+</html>
